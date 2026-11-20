@@ -81,7 +81,8 @@ mod_system() {
 
   # SYS-007 disk / SYS-008 inodes
   local dfx=(-x tmpfs -x devtmpfs -x overlay -x squashfs -x efivarfs -x nsfs)
-  local line pct mnt worst_d=0 worst_i=0 msg_d=() msg_i=()
+  # Keep an unreadable result distinct from a real 0% reading.
+  local line pct mnt worst_d=-1 worst_i=-1 msg_d=() msg_i=()
   while read -r line; do
     pct="$(printf '%s' "$line" | awk '{print $(NF-1)}' | tr -d '%')"; mnt="${line##* }"
     case "$pct" in ''|*[!0-9]*) continue ;; esac
@@ -94,10 +95,12 @@ mod_system() {
     if [ "$pct" -ge 80 ]; then msg_i+=("$mnt ${pct}%"); fi
     [ "$pct" -gt "$worst_i" ] && worst_i="$pct"
   done < <(q df -Pi "${dfx[@]}" | tail -n +2)
-  if [ "$worst_d" -ge 90 ]; then fail SYS-007 "disk almost full: $(join ', ' "${msg_d[@]}")" "full disks corrupt databases, stop logging and break package installs" "sudo du -xh / --max-depth=2 | sort -h | tail -20"
+  if [ "$worst_d" -lt 0 ]; then skip SYS-007 "disk usage" "not readable"
+  elif [ "$worst_d" -ge 90 ]; then fail SYS-007 "disk almost full: $(join ', ' "${msg_d[@]}")" "full disks corrupt databases, stop logging and break package installs" "sudo du -xh / --max-depth=2 | sort -h | tail -20"
   elif [ "$worst_d" -ge 80 ]; then warn SYS-007 "disk usage high: $(join ', ' "${msg_d[@]}")" "little headroom for logs, images and updates" "sudo du -xh / --max-depth=2 | sort -h | tail -20"
   else ok SYS-007 "disk usage below 80% (max ${worst_d}%)" ""; fi
-  if [ "$worst_i" -ge 90 ]; then fail SYS-008 "inodes almost exhausted: $(join ', ' "${msg_i[@]}")" "'No space left on device' even with free bytes; usually session/cache files" "sudo find / -xdev -type d -size +1M   # dirs with many entries"
+  if [ "$worst_i" -lt 0 ]; then skip SYS-008 "inode usage" "not readable"
+  elif [ "$worst_i" -ge 90 ]; then fail SYS-008 "inodes almost exhausted: $(join ', ' "${msg_i[@]}")" "'No space left on device' even with free bytes; usually session/cache files" "sudo find / -xdev -type d -size +1M   # dirs with many entries"
   elif [ "$worst_i" -ge 80 ]; then warn SYS-008 "inode usage high: $(join ', ' "${msg_i[@]}")" "many small files (cache, sessions, mail queue)" "sudo find / -xdev -type d -size +1M"
   else ok SYS-008 "inode usage below 80% (max ${worst_i}%)" ""; fi
 
@@ -111,12 +114,21 @@ mod_system() {
   fi
 
   # SYS-010 OOM kills in the last 7 days
-  local oom=""
+  local oom="" kernel_log="" kernel_probe log_rc=0
   if have journalctl && systemd_up; then
-    oom="$(q journalctl -k --since '-7d' --no-pager -q | grep -ciE 'out of memory|oom-kill|killed process')"
+    # An empty time window is valid only after proving the log is readable.
+    if kernel_probe="$(q journalctl -k -b -n 1 -q)" && [ -n "$kernel_probe" ]; then
+      oom=0
+      kernel_log="$(q journalctl -k --since '-7d' --no-pager -q)" || log_rc=$?
+    fi
   elif [ "$IS_ROOT" -eq 1 ] && have dmesg; then
-    oom="$(q dmesg | grep -ciE 'out of memory|oom-kill|killed process')"
+    kernel_log="$(q dmesg)" || log_rc=$?
   fi
+  if [ -n "$kernel_log" ]; then
+    oom="$(printf '%s\n' "$kernel_log" | grep -ciE 'out of memory|oom-kill|killed process')"
+  fi
+  # Partial reads still prove OOM events, but cannot prove their absence.
+  if [ "$log_rc" -ne 0 ] && [ "${oom:-0}" -eq 0 ]; then oom=""; fi
   if [ -z "$oom" ]; then
     skip SYS-010 "recent OOM kills" "kernel log not readable (needs root/journal)"
   elif [ "$oom" -gt 0 ]; then

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Fake journalctl: the boot probe and time window have independent replies.
+case " $* " in
+  *" -n 1 "*)
+    [ -n "${JOURNALCTL_STUB_PROBE_REPLY:-}" ] && printf '%s\n' "$JOURNALCTL_STUB_PROBE_REPLY"
+    exit "${JOURNALCTL_STUB_PROBE_RC:-0}"
+    ;;
+esac
+[ -n "${JOURNALCTL_STUB_REPLY:-}" ] && printf '%s\n' "$JOURNALCTL_STUB_REPLY"
+exit "${JOURNALCTL_STUB_RC:-0}"

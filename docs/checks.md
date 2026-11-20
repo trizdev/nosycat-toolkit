@@ -33,10 +33,10 @@ Every check `nosycat.sh` runs. **Severity** is the worst status a check can retu
 | SYS-004 | UTF-8 locale, no locale errors | perl/apt warnings, broken non-ASCII handling | WARN | `localectl set-locale LANG=C.UTF-8` |
 | SYS-005 | swap present on hosts with < 8 GiB RAM | memory spikes hit the OOM killer instead of slowing down | WARN | create a swapfile |
 | SYS-006 | `vm.swappiness` ≤ 60 | high values push app memory to disk early | WARN | `vm.swappiness=10` in sysctl.d |
-| SYS-007 | disk usage per filesystem (warn 80%, fail 90%) | full disks corrupt databases and stop logging | FAIL | find large dirs with `du` |
-| SYS-008 | inode usage (warn 80%, fail 90%) | "No space left on device" with free bytes | FAIL | find dirs with many files |
+| SYS-007 | disk usage per filesystem (warn 80%, fail 90%); SKIP when `df` yields no numeric usage readings | full disks corrupt databases and stop logging | FAIL | find large dirs with `du` |
+| SYS-008 | inode usage (warn 80%, fail 90%); SKIP when `df` yields no numeric usage readings | "No space left on device" with free bytes | FAIL | find dirs with many files |
 | SYS-009 | open-files hard limit ≥ 65536 | "Too many open files" under load | WARN | `LimitNOFILE=` in the unit or limits.conf |
-| SYS-010 | OOM-killer events in the last 7 days | services may be dying and restarting silently | WARN | `journalctl -k \| grep -i 'killed process'` |
+| SYS-010 | OOM-killer events in the last 7 days; probes kernel-log access first, so a readable journal with no recent entries is OK. SKIP when the log is unreadable or a read fails without OOM events; partial reads with OOM events WARN (count is a lower bound) | services may be dying and restarting silently | WARN | `journalctl -k \| grep -i 'killed process'` |
 | SYS-011 | available RAM (warn < 20%, fail < 10%) | no headroom for spikes | FAIL | `ps aux --sort=-rss` |
 | SYS-012 | 5-min load vs vCPUs (warn ≥ 1x, fail ≥ 2x) | saturation, I/O wait or provider CPU steal | FAIL | `top` (check `%st`, `%wa`) |
 

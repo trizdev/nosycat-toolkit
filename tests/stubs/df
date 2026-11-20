@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Fake df: disk and inode readings are independent.
+case "$1" in
+  -P) printf '%s\n' "${DF_STUB_DISK:-}" ;;
+  -Pi) printf '%s\n' "${DF_STUB_INODES:-}" ;;
+  *) exit 2 ;;
+esac
+exit "${DF_STUB_RC:-0}"

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fake dmesg: output and exit status can be set independently.
+[ -n "${DMESG_STUB_REPLY:-}" ] && printf '%s\n' "$DMESG_STUB_REPLY"
+exit "${DMESG_STUB_RC:-0}"

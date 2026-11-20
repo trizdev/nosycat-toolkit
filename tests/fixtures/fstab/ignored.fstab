@@ -1,0 +1,13 @@
+# UUID=old /old ext4 defaults 0 2
+
+UUID=root / ext4 defaults 0 1
+UUID=boot /boot ext4 defaults 0 2
+UUID=efi /boot/efi vfat defaults 0 2
+UUID=usr /usr ext4 defaults 0 2
+UUID=var /var ext4 defaults 0 2
+UUID=home /home ext4 defaults 0 2
+/swapfile none swap sw 0 0
+/data /mnt/bind none bind 0 0
+/data /mnt/legacy bind defaults 0 0
+nas:/manual /mnt/manual nfs noauto 0 0
+tmpfs /scratch tmpfs defaults 0 0

@@ -1,0 +1,2 @@
+UUID=data /data ext4 defaults 0 2
+UUID=backup /backup xfs defaults 0 2

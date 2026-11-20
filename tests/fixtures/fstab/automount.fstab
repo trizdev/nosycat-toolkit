@@ -1,0 +1,1 @@
+UUID=data /data ext4 defaults,x-systemd.automount 0 2

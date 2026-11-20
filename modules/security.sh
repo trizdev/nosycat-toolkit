@@ -157,8 +157,10 @@ mod_security() {
       case ",$fo," in *,nofail,*|*x-systemd.automount*) ;; *) risky+=("$mnt ($fs)") ;; esac
     done <"$fstab"
     if [ "${#risky[@]}" -gt 0 ] || [ "${#net[@]}" -gt 0 ]; then
-      local extra=""; [ "${#net[@]}" -gt 0 ] && extra="; network mounts without _netdev: $(join ', ' "${net[@]}")"
-      warn SEC-006 "data mounts without nofail: $(join ', ' "${risky[@]}")$extra" "if that volume is detached or renamed (common with block storage), boot stops in emergency mode and SSH never comes up" "add 'nofail' (and '_netdev' for network filesystems) to the options column; mount by UUID=; test with: sudo mount -a"
+      local title=""
+      [ "${#risky[@]}" -gt 0 ] && title="data mounts without nofail: $(join ', ' "${risky[@]}")"
+      [ "${#net[@]}" -gt 0 ] && title="${title:+$title; }network mounts without _netdev: $(join ', ' "${net[@]}")"
+      warn SEC-006 "$title" "if that volume is detached or renamed (common with block storage), boot stops in emergency mode and SSH never comes up" "add 'nofail' (and '_netdev' for network filesystems) to the options column; mount by UUID=; test with: sudo mount -a"
     else
       ok SEC-006 "no fstab data mounts that can block boot" ""
     fi

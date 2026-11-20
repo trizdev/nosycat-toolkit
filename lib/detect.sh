@@ -107,8 +107,9 @@ detect_provider() {
 #     allowlist ("saddr != @trusted drop") still counts;
 #   - the tables fail2ban and CrowdSec create (f2b-*, crowdsec*), whatever
 #     they contain.
+# Optional $1 restricts table families (e.g. "inet|ip6" for IPv6).
 nft_input_filters() {
-  awk '
+  awk -v families="${1:-}" '
     function filters(c, depth,   i, n, parts) {
       if (depth > 8) return 0
       if (dropper[c]) return 1
@@ -117,6 +118,7 @@ nft_input_filters() {
       return 0
     }
     /^[[:space:]]*table[[:space:]]/ { tbl = $2 ":" $3; banner = ($3 ~ /^(f2b-|crowdsec)/); ch = ""; next }
+    families != "" && tbl !~ ("^(" families "):") { next }
     banner { next }
     /^[[:space:]]*chain[[:space:]]/ { ch = tbl "/" $2; next }
     ch == "" { next }

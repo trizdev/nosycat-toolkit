@@ -3,6 +3,12 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] - Unreleased
+
+### fixed
+
+- **NET-003:** nftables covers IPv6 only when an `inet` or `ip6` input chain filters, using the same criteria as NET-002. An IPv4-only firewall with an empty IPv6 table, forward-only drops or fail2ban/CrowdSec ban lists now warns instead of reporting IPv6 as covered. The `NOSY_PROC_IF_INET6` fixture hook pins the IPv6 addresses for the tests.
+
 ## [0.2.1] - 2026-11-18
 
 ### fixed

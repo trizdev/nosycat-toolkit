@@ -141,6 +141,7 @@ q() { t "$NOSY_TIMEOUT" "$@" 2>/dev/null; }
 #     SSH_UNITS (systemctl list-unit-files ssh.service sshd.service), NGINX_T (nginx -T),
 #     SUID (list of SUID files)
 #   NOSY_FSTAB, NOSY_PROC_MOUNTS  alternative fstab and /proc/mounts
+#   NOSY_PROC_IF_INET6    alternative /proc/net/if_inet6
 #   NOSY_FX_TTY=1         treat stdout as a terminal (color auto-detection tests)
 #   NOSY_FX_TODAY=YYYY-MM-DD / NOSY_FX_NOW=EPOCH  pin the clock (ignore expiry, backup age)
 #   NOSY_FS=DIR           fake root for absolute paths read by the backup module

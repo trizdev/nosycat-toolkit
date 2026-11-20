@@ -3,6 +3,12 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] - Unreleased
+
+### fixed
+
+- **UPD-001:** failed or timed-out pending update queries are a SKIP instead of "no pending updates" or a count from failed output. checkupdates exit 2 and an empty `pacman -Qu` exit 1 still mean no updates; dnf/yum already handled query errors. Zypper exit 106 with listed updates keeps the count, marked partial.
+
 ## [0.2.1] - 2026-11-18
 
 ### fixed

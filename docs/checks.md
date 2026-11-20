@@ -70,7 +70,7 @@ Every check `nosycat.sh` runs. **Severity** is the worst status a check can retu
 
 | id | what | why it matters | severity | fix |
 |---|---|---|---|---|
-| UPD-001 | pending updates from local metadata (security count where available) | fresh images are often weeks behind | FAIL (security) | `apt full-upgrade` / `dnf upgrade` / `apk upgrade` / `pacman -Syu` |
+| UPD-001 | pending updates from local metadata (security count where available); SKIP when the query fails or times out, except zypper exit 106 with listed updates (marked partial) | fresh images are often weeks behind | FAIL (security) | `apt full-upgrade` / `dnf upgrade` / `apk upgrade` / `pacman -Syu` |
 | UPD-002 | unattended-upgrades / dnf-automatic enabled | unattended servers fall behind on fixes | WARN | install and enable the tool |
 | UPD-003 | reboot required (`/var/run/reboot-required`, `needs-restarting -r`, running kernel removed) | fixes not active; new kernel modules fail to load | WARN | reboot in a maintenance window |
 

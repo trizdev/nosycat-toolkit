@@ -4,32 +4,49 @@
 # shellcheck shell=bash
 
 mod_updates() {
-  local total="" sec="" note="" age
+  local total="" sec="" note="" age out rc
 
   case "$PKG_MGR" in
     apt-get)
       local sim
-      sim="$(t 60 apt-get -s -o Debug::NoLocking=1 dist-upgrade 2>/dev/null)"
-      total="$(printf '%s\n' "$sim" | grep -c '^Inst ')"
-      sec="$(printf '%s\n' "$sim" | grep '^Inst ' | grep -ci 'security')"
+      if sim="$(t 60 apt-get -s -o Debug::NoLocking=1 dist-upgrade 2>/dev/null)"; then
+        total="$(printf '%s\n' "$sim" | grep -c '^Inst ')"
+        sec="$(printf '%s\n' "$sim" | grep '^Inst ' | grep -ci 'security')"
+      fi
       if [ -d /var/lib/apt/lists ]; then
         age="$(find /var/lib/apt/lists -maxdepth 1 -name '*_Packages*' -mtime -7 2>/dev/null | head -n1)"
         [ -z "$age" ] && note=" (package lists older than 7 days or never fetched; run 'sudo apt update' for accurate counts)"
       fi ;;
     dnf|yum)
-      local out rc
       out="$(t 90 "$PKG_MGR" -q check-update 2>/dev/null)"; rc=$?
       if [ "$rc" -eq 100 ]; then total="$(printf '%s\n' "$out" | awk 'NF==3 && $1 ~ /\./' | wc -l)"
       elif [ "$rc" -eq 0 ]; then total=0; fi
       sec="$(t 90 "$PKG_MGR" -q updateinfo list --security 2>/dev/null | awk 'NF>=3' | wc -l)" ;;
     apk)
-      total="$(q apk version -l '<' | tail -n +2 | grep -c .)"
+      if out="$(q apk version -l '<')"; then
+        total="$(printf '%s\n' "$out" | tail -n +2 | grep -c .)"
+      fi
       note=" (uses cached index; run 'apk update' for accurate counts)" ;;
     pacman)
-      if have checkupdates; then total="$(t 60 checkupdates 2>/dev/null | grep -c .)"
-      else total="$(q pacman -Qu | grep -c .)"; note=" (local sync db; install pacman-contrib for checkupdates)"; fi ;;
+      if have checkupdates; then
+        out="$(t 60 checkupdates 2>/dev/null)"; rc=$?
+        if [ "$rc" -eq 0 ]; then total="$(printf '%s\n' "$out" | grep -c .)"
+        elif [ "$rc" -eq 2 ]; then total=0; fi
+      else
+        # pacman -Qu also returns 1 when no upgrades are available.
+        out="$(q pacman -Qu)"; rc=$?
+        if [ "$rc" -eq 0 ]; then total="$(printf '%s\n' "$out" | grep -c .)"
+        elif [ "$rc" -eq 1 ] && [ -z "$out" ]; then total=0; fi
+        note=" (local sync db; install pacman-contrib for checkupdates)"
+      fi ;;
     zypper)
-      total="$(t 60 zypper -q lu 2>/dev/null | grep -c '^v ')"
+      out="$(t 60 zypper -q lu 2>/dev/null)"; rc=$?
+      if [ "$rc" -eq 0 ]; then
+        total="$(printf '%s\n' "$out" | grep -c '^v ')"
+      elif [ "$rc" -eq 106 ] && printf '%s\n' "$out" | grep '^v ' >/dev/null; then
+        total="$(printf '%s\n' "$out" | grep -c '^v ')"
+        note=" (partial: a repository was skipped)"
+      fi
       sec="$(t 60 zypper -q lp --category security 2>/dev/null | grep -c '^[a-zA-Z].*|.*security')" ;;
   esac
 

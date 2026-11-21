@@ -357,7 +357,9 @@ The parsers and checks are tested with [bats](https://github.com/bats-core/bats-
 bats tests/
 ```
 
-CI runs ShellCheck, the bats suite on Ubuntu, Debian, Rocky Linux and Alpine, and a full read-only run in each of those containers.
+CI runs lint, a non-root runner bats suite, and an Ubuntu, Debian, Rocky Linux and Alpine matrix independently. Each container is prepared once; CLI smoke tests run after a bats failure when container preparation succeeds and the run is not cancelled, and JSON validation runs if smoke succeeds. Every failure still fails CI.
+
+For optional checks of a specific revision, manually dispatch `ci.yml` with `target_sha` set to the source commit's full 40-character lowercase hexadecimal SHA available to checkout in that repository. The dispatch-enabled workflow must be on the [default branch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow). The selected workflow branch/tag supplies the workflow; `target_sha` selects the source checkout, while push and pull request runs keep their normal checkout behavior. To compare source revisions, keep the selected workflow ref at the same commit between runs and check the job summaries for the same workflow SHA, the intended source SHAs and recorded step outcomes.
 
 A check got it wrong on your server? Open a [false positive issue](https://github.com/trizdev/nosycat-toolkit/issues/new?template=false_positive.yml): it asks for the check id, the distro and the `--format json --only <module>` output (redacted).
 

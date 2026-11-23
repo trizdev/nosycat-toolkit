@@ -157,3 +157,90 @@ fw() { export NOSY_FX_NFT="$FIX/nft/$1"; nosy detect_firewall; }
   assert_status NET-002 FAIL
   [[ "$(result_field NET-002 DETAIL)" == *"fail2ban only bans listed IPs; it is not a firewall"* ]]
 }
+
+# NET-003 must check IPv6 input filtering even when IPv4 is already filtered.
+ipv6_fw() {
+  fake_etc
+  export NOSY_FX_SS=/dev/null NOSY_FX_SSHD_T="$FIX/sshd/pa-no.sshd-T"
+  export NOSY_PROC_IF_INET6="$BATS_TEST_TMPDIR/if_inet6"
+  printf '20010db8000000000000000000000001 02 40 00 80 eth0\n' >"$NOSY_PROC_IF_INET6"
+  export NOSY_FX_NFT="$BATS_TEST_TMPDIR/ruleset.nft"
+  sed 's/^table inet /table ip /' "$FIX/nft/input-policy-drop.nft" >"$NOSY_FX_NFT"
+  cat "$1" >>"$NOSY_FX_NFT"
+  nosy detect_firewall
+  [ "$FW_ACTIVE" = "nftables" ]
+  nosy mod_network
+}
+
+@test "NET-003 WARNs with only an IPv4 input filter" {
+  ipv6_fw /dev/null
+  assert_status NET-003 WARN
+}
+
+@test "NET-003 WARNs with an IPv4 filter and an empty inet table" {
+  printf 'table inet empty {\n}\n' >"$BATS_TEST_TMPDIR/empty.nft"
+  ipv6_fw "$BATS_TEST_TMPDIR/empty.nft"
+  assert_status NET-003 WARN
+}
+
+@test "NET-003 WARNs with an IPv4 filter and only fail2ban in inet" {
+  ipv6_fw "$FIX/nft/fail2ban-only.nft"
+  assert_status NET-003 WARN
+}
+
+@test "NET-003 WARNs with an IPv4 filter and only CrowdSec in ip6" {
+  ipv6_fw "$FIX/nft/crowdsec-only.nft"
+  assert_status NET-003 WARN
+}
+
+@test "NET-003 WARNs when inet only filters forward, not input" {
+  sed 's/hook input/hook forward/' "$FIX/nft/input-policy-drop.nft" >"$BATS_TEST_TMPDIR/forward.nft"
+  ipv6_fw "$BATS_TEST_TMPDIR/forward.nft"
+  assert_status NET-003 WARN
+}
+
+@test "NET-003 WARNs when inet input only drops invalid conntrack state" {
+  ipv6_fw "$FIX/nft/input-only-invalid-drop.nft"
+  assert_status NET-003 WARN
+}
+
+@test "NET-003 WARNs when inet input only drops listed sources" {
+  ipv6_fw "$FIX/nft/custom-blocklist-only.nft"
+  assert_status NET-003 WARN
+}
+
+@test "NET-003 is OK with an inet input policy drop next to fail2ban" {
+  ipv6_fw "$FIX/nft/fail2ban-plus-filter.nft"
+  assert_status NET-003 OK
+  [[ "$(result_field NET-003 TITLE)" == *"IPv6 covered by nftables"* ]]
+}
+
+@test "NET-003 is OK with an ip6 input policy drop" {
+  sed 's/^table inet /table ip6 /' "$FIX/nft/input-policy-drop.nft" >"$BATS_TEST_TMPDIR/ip6.nft"
+  ipv6_fw "$BATS_TEST_TMPDIR/ip6.nft"
+  assert_status NET-003 OK
+  [[ "$(result_field NET-003 TITLE)" == *"IPv6 covered by nftables"* ]]
+}
+
+@test "NET-003 is OK when inet input jumps to a rejecting chain" {
+  ipv6_fw "$FIX/nft/input-jump.nft"
+  assert_status NET-003 OK
+  [[ "$(result_field NET-003 TITLE)" == *"IPv6 covered by nftables"* ]]
+}
+
+@test "NET-003 counts an IPv6 source allowlist" {
+  sed 's/ipv4_addr/ipv6_addr/; s/192\.0\.2\.10/2001:db8::10/; s/ip saddr/ip6 saddr/' "$FIX/nft/allowlist-saddr.nft" >"$BATS_TEST_TMPDIR/allowlist.nft"
+  ipv6_fw "$BATS_TEST_TMPDIR/allowlist.nft"
+  assert_status NET-003 OK
+  [[ "$(result_field NET-003 TITLE)" == *"IPv6 covered by nftables"* ]]
+}
+
+@test "NET-003 is OK with only a link-local IPv6 address" {
+  fake_etc
+  export NOSY_FX_SS=/dev/null NOSY_FX_SSHD_T="$FIX/sshd/pa-no.sshd-T"
+  export NOSY_PROC_IF_INET6="$BATS_TEST_TMPDIR/if_inet6"
+  printf 'fe800000000000000000000000000001 02 40 20 80 eth0\n' >"$NOSY_PROC_IF_INET6"
+  nosy mod_network
+  assert_status NET-003 OK
+  [ "$(result_field NET-003 TITLE)" = "no global IPv6 address" ]
+}

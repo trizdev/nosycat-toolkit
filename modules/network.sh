@@ -74,8 +74,8 @@ mod_network() {
   esac
 
   # NET-003 IPv6 reachable without IPv6 rules
-  local v6=0
-  if [ -r /proc/net/if_inet6 ] && awk '$4=="00" && $6!="lo"' /proc/net/if_inet6 | grep -q .; then v6=1; fi
+  local v6=0 if_inet6="${NOSY_PROC_IF_INET6:-/proc/net/if_inet6}"
+  if [ -r "$if_inet6" ] && awk '$4=="00" && $6!="lo"' "$if_inet6" | grep -q .; then v6=1; fi
   if [ "$v6" -eq 0 ]; then
     ok NET-003 "no global IPv6 address" ""
   elif [ "$IS_ROOT" -ne 1 ]; then
@@ -87,8 +87,8 @@ mod_network() {
         else fail NET-003 "ufw has IPV6=no but the server has a global IPv6" "every service is reachable over IPv6 bypassing your ufw rules" "sudo sed -i 's/^IPV6=.*/IPV6=yes/' /etc/default/ufw && sudo ufw reload"; fi ;;
       firewalld) ok NET-003 "IPv6 filtered by firewalld" "" ;;
       nftables)
-        if fx NFT nft list ruleset | grep -qE '^table (inet|ip6) '; then ok NET-003 "IPv6 covered by nftables (inet/ip6 table)" ""
-        else warn NET-003 "nftables has no inet/ip6 table" "IPv6 traffic may be unfiltered" "use 'table inet filter' instead of 'table ip filter'"; fi ;;
+        if fx NFT nft list ruleset | nft_input_filters 'inet|ip6'; then ok NET-003 "IPv6 covered by nftables (inet/ip6 input filter)" ""
+        else warn NET-003 "nftables has no IPv6 input filter" "IPv6 traffic may be unfiltered" "add an input filter in 'table inet filter' or 'table ip6 filter'"; fi ;;
       *)
         if fx_have IP6TABLES_INPUT ip6tables && fx IP6TABLES_INPUT ip6tables -S INPUT | iptables_input_filters; then ok NET-003 "IPv6 filtered by ip6tables" ""
         else warn NET-003 "global IPv6 address without IPv6 firewall rules" "services listening on :: are reachable over IPv6" "enable a firewall that covers IPv6 (ufw IPV6=yes, firewalld, nft inet table)"; fi ;;
